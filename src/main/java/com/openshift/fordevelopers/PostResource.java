@@ -34,8 +34,12 @@ public class PostResource {
     return Response.ok().build();
   }
 
-  @DELETE
+ @DELETE
   public Response delete(Post post) {
-    return Response.ok().build();
+    boolean removed = lastPosts.remove(post);
+    if (removed) {
+        return Response.ok().build();
+    }
+    return Response.status(Response.Status.NOT_FOUND).build();
   }
 }
