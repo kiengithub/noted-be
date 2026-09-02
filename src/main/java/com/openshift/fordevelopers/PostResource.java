@@ -1,6 +1,8 @@
 package com.openshift.fordevelopers;
 
-import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Set;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -16,39 +18,31 @@ import javax.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class PostResource {
+  private Set<Post> lastPosts = Collections.newSetFromMap(Collections.synchronizedMap(new LinkedHashMap<>()));
 
   public PostResource() {
   }
 
   @GET
   public Response list() {
-    // Đọc thật từ MongoDB (Post.listAll() — static method Panache tự sinh cho PanacheMongoEntity),
-    // KHÔNG đọc từ biến RAM nữa.
-    List<Post> posts = Post.listAll();
-    return Response.ok(posts).build();
+    return Response.ok(lastPosts).build();
   }
 
   @POST
   public Response add(Post post) {
-    // Ghi thật xuống MongoDB (post.persist() — PanacheMongoEntityBase.persist(), verify trực tiếp
-    // qua source Quarkus 1.4.2.Final: extensions/panache/mongodb-panache/.../PanacheMongoEntityBase.java).
-    // Bản cũ chỉ có lastPosts.add(post) — không đụng gì tới Mongo, mất hết khi pod restart.
-    post.persist();
+    lastPosts.add(post);
     return Response.ok().build();
   }
 
   @DELETE
+ @DELETE
   public Response delete(Post post) {
-    // Không dùng post.id (frontend gửi lên object không có id thật của Mongo cho dữ liệu cũ) —
-    // so khớp bằng equals() (title/content/timestamp, Post.java đã override đúng), tìm trong dữ
-    // liệu Mongo thật rồi gọi p.delete() (PanacheMongoEntityBase.delete()) để xoá đúng document đó.
-    List<Post> posts = Post.listAll();
-    for (Post p : posts) {
-      if (p.equals(post)) {
-        p.delete();
+    return Response.ok().build();
+    boolean removed = lastPosts.remove(post);
+    if (removed) {
         return Response.ok().build();
-      }
     }
     return Response.status(Response.Status.NOT_FOUND).build();
   }
+}
 }
